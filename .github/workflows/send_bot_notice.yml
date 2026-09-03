@@ -1,0 +1,68 @@
+name: 发送 Telegram 机器人通知
+permissions:
+  contents: read
+  actions: read
+on:
+  workflow_dispatch:
+    inputs:
+      # ==================== Bot-Push 选项 ====================
+      msg_type:
+        description: "通知类型"
+        type: string  # 原boolean不合理，改为字符串支持自定义类型
+        default: "notice"
+        required: true
+      content:
+        description: "通知内容"
+        type: string
+        default: ""
+        required: true
+jobs:
+  send-telegram:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 发送 Telegram 群组通知(频道讨论组)
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID_3 }}
+          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID_3 }}
+        run: |
+          set -euo pipefail
+          # 定义输入变量
+          INPUT_MSG_TYPE="${{ inputs.msg_type }}"
+          INPUT_CONTENT="${{ inputs.content }}"
+          
+          # 校验关键环境变量
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "错误：BOT_TOKEN 或 CHAT_ID 未配置"
+            exit 1
+          fi
+          
+          # 构造 HTML 格式消息内容，适配Telegram转义
+          TEXT="<b>New Notifications: </b>%0A%0A"
+          TEXT+="<b>Notification type：</b><code>${INPUT_MSG_TYPE}</code>%0A%0A"
+          TEXT+="<b>Notification content：</b>%0A<pre>${INPUT_CONTENT}</pre>"
+          
+          # 发送Telegram请求并捕获响应
+          echo "开始发送Telegram通知..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            -d "message_thread_id=${MESSAGE_THREAD_ID}" \
+            -d "parse_mode=HTML" \
+            -d "text=${TEXT}")
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=-1003567736013" \
+            -d "parse_mode=HTML" \
+            -d "text=${TEXT}")
+          
+          # 解析响应状态码和内容
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          # 结果判断
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ 通知发送成功！响应：$RESPONSE_BODY"
+          else
+            echo "❌ 通知发送失败！状态码：$HTTP_CODE，响应：$RESPONSE_BODY"
+            exit 1
+          fi

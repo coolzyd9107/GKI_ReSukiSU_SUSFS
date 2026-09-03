@@ -1,0 +1,739 @@
+# ========================================
+# GKI 内核构建主入口
+# ========================================
+# 此工作流是项目的统一入口点，用于：
+# 1. 构建所有版本的 GKI 内核
+# 2. 收集补丁冲突文件用于调试
+# 3. 创建 GitHub Release (可选)
+# ========================================
+
+name: 构建内核
+
+# 适配 Node.js 24
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# 并发控制：同一分支只运行一个实例，新运行会取消旧的
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      # ==================== 发布配置 ====================
+      release_type:
+        description: "发布类型"
+        type: choice
+        options:
+          - Actions
+          - Pre-Release
+          - Release
+        default: Actions
+
+      # ==================== KernelSU 配置 ====================
+      # KernelSU 变体固定为 ReSukiSU
+      kernelsu_branch:
+        description: "ReSukiSU branch (main/dev/自定义，留空使用main)"
+        type: string
+        default: "main"
+        required: false
+
+      # ==================== 可选配置 ====================
+      version:
+        description: "自定义版本名 (可选)"
+        type: string
+        default: ""
+        required: false
+      build_time:
+        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+        required: false
+      droidspaces:
+        description: "Droidspaces 容器支持 (5.10~6.6: 槽位补丁, 6.12: 开/关)"
+        type: choice
+        options:
+          - "off"
+          - "678"
+          - "123"
+          - "345"
+        default: "off"
+      droidspaces_ntsync:
+        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+        type: boolean
+        default: false
+      build_bypass:
+        description: "同时构建普通内核和 Bypass 内核"
+        type: boolean
+        default: false
+
+      # ==================== 功能开关 ====================
+      clean_build:
+        description: "清洁构建 (不集成 KernelSU、SUSFS 和可选补丁)"
+        type: boolean
+        default: false
+
+      use_zram:
+        description: "启用 ZRAM 增强算法"
+        type: boolean
+        default: false
+      use_bbg:
+        description: "启用 BBG 防格机"
+        type: boolean
+        default: false
+      use_rekernel:
+        description: "启用 Re-Kernel 驱动"
+        type: boolean
+        default: false
+      cve_2026_43499_patch:
+        description: "应用 CVE-2026-43499 rtmutex 修复链"
+        type: boolean
+        default: true
+      cancel_susfs:
+        description: "禁用 SUSFS"
+        type: boolean
+        default: false
+
+      # ==================== 构建版本选择 ====================
+      build_a12_5_10:
+        description: "Android 12 - 5.10"
+        type: boolean
+        default: false
+      build_a13_5_15:
+        description: "Android 13 - 5.15"
+        type: boolean
+        default: false
+      build_a14_6_1:
+        description: "Android 14 - 6.1"
+        type: boolean
+        default: false
+      build_a15_6_6:
+        description: "Android 15 - 6.6"
+        type: boolean
+        default: false
+      build_a16_6_12:
+        description: "Android 16 - 6.12"
+        type: boolean
+        default: false
+      build_all:
+        description: "构建全部版本"
+        type: boolean
+        default: true
+
+      # ==================== Bot-Push 选项 ====================
+      commit:
+        description: "Commit (sha 或描述)"
+        type: string
+        default: ""
+        required: false
+      change_log:
+        description: "Change Log (可选，支持多行)"
+        type: string
+        default: ""
+        required: false
+
+jobs:
+  # ==================== Android 12 - 5.10 构建 ====================
+  build-a12-5-10:
+    if: inputs.build_a12_5_10 || inputs.build_all
+    uses: ./.github/workflows/kernel-a12-5-10.yml
+    secrets: inherit
+    with:
+      clean_build: ${{ inputs.clean_build }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      version: ${{ inputs.version }}
+      build_time: ${{ inputs.build_time || '' }}
+      use_zram: ${{ inputs.use_zram }}
+      use_bbg: ${{ inputs.use_bbg }}
+      use_rekernel: ${{ inputs.use_rekernel }}
+      cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      cancel_susfs: ${{ inputs.cancel_susfs }}
+      droidspaces: ${{ inputs.droidspaces }}
+      droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
+      build_bypass: ${{ inputs.build_bypass }}
+
+  # ==================== Android 13 - 5.15 构建 ====================
+  build-a13-5-15:
+    if: inputs.build_a13_5_15 || inputs.build_all
+    uses: ./.github/workflows/kernel-a13-5-15.yml
+    secrets: inherit
+    with:
+      clean_build: ${{ inputs.clean_build }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      version: ${{ inputs.version }}
+      build_time: ${{ inputs.build_time || '' }}
+      use_zram: ${{ inputs.use_zram }}
+      use_bbg: ${{ inputs.use_bbg }}
+      use_rekernel: ${{ inputs.use_rekernel }}
+      cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      cancel_susfs: ${{ inputs.cancel_susfs }}
+      droidspaces: ${{ inputs.droidspaces }}
+      droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
+      build_bypass: ${{ inputs.build_bypass }}
+
+  # ==================== Android 14 - 6.1 构建 ====================
+  build-a14-6-1:
+    if: inputs.build_a14_6_1 || inputs.build_all
+    uses: ./.github/workflows/kernel-a14-6-1.yml
+    secrets: inherit
+    with:
+      clean_build: ${{ inputs.clean_build }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      version: ${{ inputs.version }}
+      build_time: ${{ inputs.build_time || '' }}
+      use_zram: ${{ inputs.use_zram }}
+      use_bbg: ${{ inputs.use_bbg }}
+      use_rekernel: ${{ inputs.use_rekernel }}
+      cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      cancel_susfs: ${{ inputs.cancel_susfs }}
+      droidspaces: ${{ inputs.droidspaces }}
+      droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
+      build_bypass: ${{ inputs.build_bypass }}
+
+  # ==================== Android 15 - 6.6 构建 ====================
+  build-a15-6-6:
+    if: inputs.build_a15_6_6 || inputs.build_all
+    uses: ./.github/workflows/kernel-a15-6-6.yml
+    secrets: inherit
+    with:
+      clean_build: ${{ inputs.clean_build }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      version: ${{ inputs.version }}
+      build_time: ${{ inputs.build_time || '' }}
+      use_zram: ${{ inputs.use_zram }}
+      use_bbg: ${{ inputs.use_bbg }}
+      use_rekernel: ${{ inputs.use_rekernel }}
+      cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      cancel_susfs: ${{ inputs.cancel_susfs }}
+      droidspaces: ${{ inputs.droidspaces }}
+      droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
+      build_bypass: ${{ inputs.build_bypass }}
+
+  # ==================== Android 16 - 6.12 构建 ====================
+  build-a16-6-12:
+    if: inputs.build_a16_6_12 || inputs.build_all
+    uses: ./.github/workflows/kernel-a16-6-12.yml
+    secrets: inherit
+    with:
+      clean_build: ${{ inputs.clean_build }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      version: ${{ inputs.version }}
+      build_time: ${{ inputs.build_time || '' }}
+      use_zram: ${{ inputs.use_zram }}
+      use_bbg: ${{ inputs.use_bbg }}
+      use_rekernel: ${{ inputs.use_rekernel }}
+      cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      cancel_susfs: ${{ inputs.cancel_susfs }}
+      droidspaces: ${{ inputs.droidspaces }}
+      droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
+      build_bypass: ${{ inputs.build_bypass }}
+
+  # ==================== 收集补丁冲突文件 ====================
+  # 汇总所有构建任务中的 .rej 文件，方便调试补丁问题
+  collect-rejects:
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    needs:
+      - build-a12-5-10
+      - build-a13-5-15
+      - build-a14-6-1
+      - build-a15-6-6
+      - build-a16-6-12
+    steps:
+      - name: 下载冲突文件
+        uses: actions/download-artifact@v8
+        with:
+          path: ./downloaded-artifacts
+          pattern: '*-Rejects'
+
+      - name: 处理冲突文件
+        run: |
+          mkdir -p aio-rejects
+          for dir in ./downloaded-artifacts/*-Rejects; do
+            [ -d "$dir" ] || continue
+            dirname=$(basename "$dir")
+            original_name=${dirname%-Rejects}
+            mkdir -p "aio-rejects/$original_name"
+            cp -r "$dir/." "aio-rejects/$original_name/"
+          done
+          if [ "$(ls -A aio-rejects 2>/dev/null)" ]; then
+            cd aio-rejects && zip -r -q -9 ../AIO-REJ.zip . && cd ..
+          fi
+
+      - name: 上传汇总冲突文件
+        uses: actions/upload-artifact@v6
+        with:
+          name: AIO-REJ
+          path: AIO-REJ.zip
+          if-no-files-found: ignore
+
+  # ==================== 创建发布 ====================
+  # 当 release_type 不是 Actions 时，创建 GitHub Release
+  # 仅限原仓库运行，fork 仓库跳过此步骤
+  release:
+    if: ${{ always() && !cancelled() && inputs.release_type != 'Actions' && github.repository == 'ReSukiSU-GKI/GKI_KernelSU_SUSFS' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    needs:
+      - build-a12-5-10
+      - build-a13-5-15
+      - build-a14-6-1
+      - build-a15-6-6
+      - build-a16-6-12
+
+    # ==================== 环境变量 ====================
+    env:
+      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      # ==================== 设置显示名称 ====================
+      # 预计算各种显示名称，简化后续引用
+      - name: 设置显示名称
+        run: |
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            KSU_NAME="Clean"
+            RELEASE_NAME="GKI内核: Clean"
+            echo "LZ4_STATUS=未开启" >> "$GITHUB_ENV"
+            echo "BBG_STATUS=不支持" >> "$GITHUB_ENV"
+            echo "LZ4_SUFFIX=" >> "$GITHUB_ENV"
+            echo "HOOK_TYPE=" >> "$GITHUB_ENV"
+            echo "MOUNT_TYPE=" >> "$GITHUB_ENV"
+            echo "BRANCH_INFO=" >> "$GITHUB_ENV"
+          else
+            KSU_NAME="ReSukiSU"
+            echo "LZ4_STATUS=${{ inputs.use_zram && '开启' || '未开启' }}" >> "$GITHUB_ENV"
+            echo "BBG_STATUS=${{ inputs.use_bbg && '支持' || '不支持' }}" >> "$GITHUB_ENV"
+            echo "LZ4_SUFFIX=${{ inputs.use_zram && '、LZ4KD' || '' }}" >> "$GITHUB_ENV"
+
+            if [ "${{ inputs.cancel_susfs }}" = "true" ]; then
+              RELEASE_NAME="GKI内核: ${KSU_NAME}"
+              echo "SUSFS_SUFFIX=" >> "$GITHUB_ENV"
+              echo "SUSFS_STATUS=未集成 / Not included" >> "$GITHUB_ENV"
+              echo "HOOK_TYPE=" >> "$GITHUB_ENV"
+              echo "MOUNT_TYPE=" >> "$GITHUB_ENV"
+            else
+              RELEASE_NAME="GKI内核: ${KSU_NAME} & SUSFS"
+              echo "SUSFS_SUFFIX= + **SUSFS**" >> "$GITHUB_ENV"
+              echo "SUSFS_STATUS=已集成 / Included" >> "$GITHUB_ENV"
+              echo "HOOK_TYPE=-> SUSFS Inline Hooks" >> "$GITHUB_ENV"
+              echo "MOUNT_TYPE=-> Magic Mount 支持" >> "$GITHUB_ENV"
+            fi
+
+            if [ -n "${{ inputs.kernelsu_branch }}" ]; then
+              echo "BRANCH_INFO=(${{ inputs.kernelsu_branch }})" >> "$GITHUB_ENV"
+            else
+              echo "BRANCH_INFO=稳定版" >> "$GITHUB_ENV"
+            fi
+          fi
+
+          echo "KSU_NAME=$KSU_NAME" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
+
+      - name: 验证构建状态
+        run: |
+          failed=0
+          check_build() {
+            local selected="$1" job_name="$2" result="$3"
+            if [[ "$selected" == "true" && "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "选中的构建任务 $job_name 失败 (结果: $result)"
+              failed=1
+            fi
+          }
+          check_build "${{ inputs.build_a12_5_10 || inputs.build_all }}" "build-a12-5-10" "${{ needs.build-a12-5-10.result }}"
+          check_build "${{ inputs.build_a13_5_15 || inputs.build_all }}" "build-a13-5-15" "${{ needs.build-a13-5-15.result }}"
+          check_build "${{ inputs.build_a14_6_1 || inputs.build_all }}" "build-a14-6-1" "${{ needs.build-a14-6-1.result }}"
+          check_build "${{ inputs.build_a15_6_6 || inputs.build_all }}" "build-a15-6-6" "${{ needs.build-a15-6-6.result }}"
+          check_build "${{ inputs.build_a16_6_12 || inputs.build_all }}" "build-a16-6-12" "${{ needs.build-a16-6-12.result }}"
+          [[ "$failed" -ne 0 ]] && exit 1 || true
+
+      - name: 检出代码
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: 获取 KernelSU 提交信息
+        if: inputs.clean_build != true
+        run: |
+          REPO_URL="https://github.com/ReSukiSU/ReSukiSU.git"
+          REPO_URL2="ReSukiSU/ReSukiSU"
+
+          # 如果用户输入了自定义分支/commit，优先使用
+          if [ -n "${{ inputs.kernelsu_branch }}" ]; then
+            BRANCH_INPUT="${{ inputs.kernelsu_branch }}"
+            # 检查是否是 commit hash (40位十六进制)
+            if [[ "$BRANCH_INPUT" =~ ^[a-fA-F0-9]{40}$ ]]; then
+              KSU_REF=$BRANCH_INPUT
+              KSU_URL="https://github.com/$REPO_URL2/commit/$BRANCH_INPUT"
+            else
+              # 是分支名，获取该分支的最新 commit
+              COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH_INPUT | awk '{ print $1 }')
+              KSU_REF=$COMMIT_HASH
+              KSU_URL="https://github.com/$REPO_URL2/commit/$COMMIT_HASH"
+            fi
+          else
+            # 稳定版：获取最新 tag
+            TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
+            KSU_REF=$TAG
+            KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
+          fi
+
+          echo "KSU_REF=$KSU_REF" >> $GITHUB_ENV
+          echo "KSU_URL=$KSU_URL" >> $GITHUB_ENV
+
+      - name: 获取 SUSFS 提交信息
+        if: inputs.clean_build != true
+        run: |
+          GITLAB_OWNER="simonpunk"
+          GITLAB_REPO="susfs4ksu"
+          declare -A BRANCH_MAP=(
+            ["gki_android12_5_10"]="gki-android12-5.10"
+            ["gki_android13_5_15"]="gki-android13-5.15"
+            ["gki_android14_6_1"]="gki-android14-6.1"
+            ["gki_android15_6_6"]="gki-android15-6.6"
+            ["gki_android16_6_12"]="gki-android16-6.12"
+          )
+          for var_name in "${!BRANCH_MAP[@]}"; do
+            branch_name="${BRANCH_MAP[$var_name]}"
+            COMMIT_HASH=$(git ls-remote https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO.git refs/heads/$branch_name | awk '{ print $1 }')
+            if [[ -n "$COMMIT_HASH" ]]; then
+              COMMIT_URL="https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO/-/commit/$COMMIT_HASH"
+              echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> "$GITHUB_ENV"
+              echo "COMMIT_URL_${var_name}=$COMMIT_URL" >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: 生成清洁构建发布说明
+        if: inputs.clean_build
+        run: |
+          cat > release_body.md << 'EOF'
+          ## 清洁 GKI 构建 / Clean GKI Build
+
+          此发布包含未集成 KernelSU、SUSFS 或其他可选功能补丁的 GKI 内核。
+
+          This release contains GKI kernels without KernelSU, SUSFS, or optional feature patches.
+
+          | 组件 / Component | 状态 / Status |
+          |:---|:---|
+          | KernelSU | 未集成 / Not included |
+          | SUSFS | 未集成 / Not included |
+          | ZRAM、BBG、Re-Kernel、Droidspaces | 未集成 / Not included |
+
+          > 刷入前请备份原厂 Boot 镜像，并确认内核版本与设备兼容。
+
+          **LTO**: thin（6.12 使用 none）
+
+          点击下方 **Assets** 展开下载 / Expand **Assets** below to download.
+          EOF
+
+      - name: 生成常规发布说明
+        if: inputs.clean_build != true
+        run: |
+          cat > release_body.md << EOF
+          ## 📦 本次发布内容 / Release Contents
+
+          **${{ env.KSU_NAME }}**${{ env.SUSFS_SUFFIX }}${{ env.LZ4_SUFFIX }}
+
+          ### ✨ 功能特性 / Features
+
+          | 组件 / Component | 状态 / Status |
+          |:---|:---|
+          | ${{ env.KSU_NAME }} | ${{ env.BRANCH_INFO }} |
+          | SUSFS | ${{ env.SUSFS_STATUS }} |
+          | BBG 安全补丁 | ${{ env.BBG_STATUS }} |
+          | LZ4KD & ONEPLUS_LZ4K | ${{ env.LZ4_STATUS }} |
+          | LZ4 | v1.10.0 ${{ env.LZ4_STATUS }} |
+
+          ${{ env.HOOK_TYPE }}
+          ${{ env.MOUNT_TYPE }}
+
+          > 💡 [Unicode 零宽绕过修复](https://t.me/real5ec1cff/268) - 请使用 Xposed 模块
+
+          ### 📥 推荐模块 / Recommended Module
+
+          - https://github.com/sidex15/ksu_module_susfs
+
+          ---
+
+          > [!IMPORTANT]
+          > ### ⚠️ 风险声明 / Risk Disclaimer
+          >
+          > 本项目整合了多个**活跃维护的上游组件**，由于各组件更新频繁且相互依赖，**可能出现以下问题**：
+          >
+          > - 🔄 无限重启 (Bootloop)
+          > - 🐛 功能异常或系统不稳定
+          >
+          > **刷入前请务必：**
+          > 1. 备份原厂 Boot 镜像，确保可随时恢复
+          > 2. 记录当前时间，便于日志分析
+          >
+          > ---
+          >
+          > This project integrates multiple **actively maintained upstream components**. Due to frequent updates and dependencies, **the following issues may occur**:
+          >
+          > - 🔄 Bootloop
+          > - 🐛 Functional issues or system instability
+          >
+          > **Before flashing, please ensure:**
+          > 1. Backup your stock boot image for recovery
+          > 2. Note the current time for log analysis
+
+          <details>
+          <summary>📋 刷入后指南 / Post-Flash Guide</summary>
+
+          #### ✅ 如果正常启动 / If Boot Successful
+
+          恭喜！享受你的新内核吧 🎉
+
+          Congratulations! Enjoy your new kernel 🎉
+
+          #### ❌ 如果无法启动 / If Boot Failed
+
+          1. 恢复原厂 Boot 镜像
+          2. 使用 KernelSU 管理器提取内核日志
+          3. 将日志提交到 [Issues](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues) 或咨询专业人士
+
+          1. Restore stock boot image
+          2. Extract kernel logs using KernelSU Manager
+          3. Submit logs to [Issues](https://github.com/zzh20188/GKI_KernelSU_SUSFS/issues) or consult experts
+
+          </details>
+
+          ---
+
+          <details>
+          <summary>🔗 提交信息 / Commit Info</summary>
+
+          **KernelSU (ReSukiSU)**: [${{ env.KSU_REF }}](${{ env.KSU_URL }})
+
+          **SUSFS4KSU**:
+          - gki-android12-5.10: [${{ env.COMMIT_HASH_gki_android12_5_10 }}](${{ env.COMMIT_URL_gki_android12_5_10 }})
+          - gki-android13-5.15: [${{ env.COMMIT_HASH_gki_android13_5_15 }}](${{ env.COMMIT_URL_gki_android13_5_15 }})
+          - gki-android14-6.1: [${{ env.COMMIT_HASH_gki_android14_6_1 }}](${{ env.COMMIT_URL_gki_android14_6_1 }})
+          - gki-android15-6.6: [${{ env.COMMIT_HASH_gki_android15_6_6 }}](${{ env.COMMIT_URL_gki_android15_6_6 }})
+          - gki-android16-6.12: [${{ env.COMMIT_HASH_gki_android16_6_12 }}](${{ env.COMMIT_URL_gki_android16_6_12 }})
+
+          </details>
+
+          ---
+
+          **LTO**: thin
+
+          📂 点击下方 **Assets** 展开下载 / Click **Assets** below to download
+          EOF
+
+      - name: 生成版本标签
+        run: |
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            SUS_VERSION="clean"
+          else
+            SUSFS_INFO_URL="https://gitlab.com/simonpunk/susfs4ksu/-/raw/gki-android14-6.1/ksu_module_susfs/module.prop?ref_type=heads"
+            SUS_VERSION=$(curl --fail --silent --show-error "$SUSFS_INFO_URL" | awk -F '=' '$1 == "version" { print $2; exit }' || true)
+          fi
+          if [ -z "$SUS_VERSION" ]; then
+            echo "警告: 未获取到 SUSFS 版本，使用默认版本号"
+            SUS_VERSION="1.0.0"
+          fi
+
+          MAX_REV=0
+          EXISTING_TAGS=$(
+            {
+              gh api --paginate "repos/$REPO_OWNER/$REPO_NAME/tags?per_page=100" --jq '.[].name'
+              gh api --paginate "repos/$REPO_OWNER/$REPO_NAME/releases?per_page=100" --jq '.[].tag_name'
+            } | sort -u
+          )
+          while IFS= read -r TAG; do
+            case "$TAG" in
+              "$SUS_VERSION"-r*)
+                REVISION="${TAG#"$SUS_VERSION-r"}"
+                if [[ "$REVISION" =~ ^[0-9]+$ ]] && (( REVISION > MAX_REV )); then
+                  MAX_REV=$REVISION
+                fi
+                ;;
+            esac
+          done <<< "$EXISTING_TAGS"
+
+          NEW_TAG="${SUS_VERSION}-r$((MAX_REV + 1))"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
+          echo "生成标签: $NEW_TAG"
+
+      - name: 下载构建产物
+        uses: actions/download-artifact@v8
+        with:
+          path: ./downloaded-artifacts
+
+      - name: 验证发布产物
+        run: |
+          KERNEL_COUNT=$(find ./downloaded-artifacts -type f -path './downloaded-artifacts/*_kernel-*/*' -name '*AnyKernel3.zip' | wc -l)
+          if [ "$KERNEL_COUNT" -eq 0 ]; then
+            echo "::error::未找到可发布的内核 AnyKernel3 包。"
+            exit 1
+          fi
+          echo "内核包数量: $KERNEL_COUNT"
+
+      - name: 创建 GitHub Release
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ inputs.release_type }}" == "Pre-Release" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$NEW_TAG" \
+            --title "${{ env.RELEASE_NAME }}" \
+            --notes-file release_body.md \
+            --target "$GITHUB_SHA" \
+            --draft \
+            $PRERELEASE_FLAG
+
+      - name: 上传内核产物
+        run: |
+          for file in ./downloaded-artifacts/*_kernel-*/*; do
+            [ -d "$file" ] && continue
+            [[ "$file" == *-Rejects/* ]] && continue
+            echo "上传 $file..."
+            gh release upload "$NEW_TAG" "$file"
+          done
+
+      - name: 将发布由draft转换为publish状态
+        run: |
+          gh release edit --draft=false "$NEW_TAG"
+
+      - name: 构建摘要
+        run: |
+          echo "## 发布已创建" >> $GITHUB_STEP_SUMMARY
+          echo "- **标签**: $NEW_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **类型**: ${{ inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **链接**: https://github.com/$REPO_OWNER/$REPO_NAME/releases/tag/$NEW_TAG" >> $GITHUB_STEP_SUMMARY
+
+      - name: 发送 Telegram 频道通知
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          set -euo pipefail
+
+          INPUT_COMMIT="${{ inputs.commit }}"
+          INPUT_CHANGE_LOG="${{ inputs.change_log }}"
+
+          TEXT=$(cat <<EOF
+          <b>New GKI Release:</b>
+          
+          Branch: <code>${{ github.ref_name }}</code>
+          Commit: ${INPUT_COMMIT}
+          Tag: <code>${NEW_TAG}</code>
+          
+          Features: 
+          <pre>Build mode = ${{ inputs.clean_build && 'Clean' || 'ReSukiSU' }}
+          SuSFS = ${{ inputs.clean_build != true && inputs.cancel_susfs != true && 'true' || 'false' }}
+          BBG = ${{ inputs.clean_build != true && inputs.use_bbg && 'true' || 'false' }}
+          LZ4KD = ${{ inputs.clean_build != true && inputs.use_zram && 'true' || 'false' }}
+          Re-Kernel = ${{ inputs.clean_build != true && inputs.use_rekernel && 'true' || 'false' }}
+          Droidspaces = ${{ inputs.clean_build && 'off' || inputs.droidspaces }}${{ inputs.clean_build != true && inputs.droidspaces_ntsync && ' + NTSync' || '' }}
+          KPatch-Next Support = ${{ inputs.clean_build != true && 'true' || 'false' }}</pre>
+          Change Log: 
+          <pre>${INPUT_CHANGE_LOG}
+          </pre>
+          
+          Download: <a href="https://github.com/ReSukiSU-GKI/GKI_KernelSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
+
+          Workflow commit: <code>${{ github.sha }}</code>
+          EOF
+          )
+
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d parse_mode="HTML" \
+            --data-urlencode text="${TEXT}"
+            
+      - name: 发送 Telegram 社区群组通知
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID_2 }}
+          message_thread_id: ${{secrets.MESSAGE_THREAD_ID}}
+        run: |
+          set -euo pipefail
+
+          INPUT_COMMIT="${{ inputs.commit }}"
+          INPUT_CHANGE_LOG="${{ inputs.change_log }}"
+
+          TEXT=$(cat <<EOF
+          <b>New GKI Release:</b>
+          
+          Branch: <code>${{ github.ref_name }}</code>
+          Commit: ${INPUT_COMMIT}
+          Tag: <code>${NEW_TAG}</code>
+          
+          Features: 
+          <pre>Build mode = ${{ inputs.clean_build && 'Clean' || 'ReSukiSU' }}
+          SuSFS = ${{ inputs.clean_build != true && inputs.cancel_susfs != true && 'true' || 'false' }}
+          BBG = ${{ inputs.clean_build != true && inputs.use_bbg && 'true' || 'false' }}
+          LZ4KD = ${{ inputs.clean_build != true && inputs.use_zram && 'true' || 'false' }}
+          Re-Kernel = ${{ inputs.clean_build != true && inputs.use_rekernel && 'true' || 'false' }}
+          Droidspaces = ${{ inputs.clean_build && 'off' || inputs.droidspaces }}${{ inputs.clean_build != true && inputs.droidspaces_ntsync && ' + NTSync' || '' }}
+          KPatch-Next Support = ${{ inputs.clean_build != true && 'true' || 'false' }}</pre>
+          Change Log: 
+          <pre>${INPUT_CHANGE_LOG}
+          </pre>
+          
+          Download: <a href="https://github.com/ReSukiSU-GKI/GKI_KernelSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
+
+          Workflow commit: <code>${{ github.sha }}</code>
+          EOF
+          )
+
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d message_thread_id="${message_thread_id}" \
+            -d parse_mode="HTML" \
+            --data-urlencode text="${TEXT}"
+
+      - name: 发送 Telegram 群组通知(频道讨论组)
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID_3 }}
+          message_thread_id: ${{secrets.MESSAGE_THREAD_ID_2}}
+        run: |
+          set -euo pipefail
+
+          INPUT_COMMIT="${{ inputs.commit }}"
+          INPUT_CHANGE_LOG="${{ inputs.change_log }}"
+
+          TEXT=$(cat <<EOF
+          <b>New GKI Release:</b>
+          
+          Branch: <code>${{ github.ref_name }}</code>
+          Commit: ${INPUT_COMMIT}
+          Tag: <code>${NEW_TAG}</code>
+          
+          Features: 
+          <pre>Build mode = ${{ inputs.clean_build && 'Clean' || 'ReSukiSU' }}
+          SuSFS = ${{ inputs.clean_build != true && inputs.cancel_susfs != true && 'true' || 'false' }}
+          BBG = ${{ inputs.clean_build != true && inputs.use_bbg && 'true' || 'false' }}
+          LZ4KD = ${{ inputs.clean_build != true && inputs.use_zram && 'true' || 'false' }}
+          Re-Kernel = ${{ inputs.clean_build != true && inputs.use_rekernel && 'true' || 'false' }}
+          Droidspaces = ${{ inputs.clean_build && 'off' || inputs.droidspaces }}${{ inputs.clean_build != true && inputs.droidspaces_ntsync && ' + NTSync' || '' }}
+          KPatch-Next Support = ${{ inputs.clean_build != true && 'true' || 'false' }}</pre>
+          Change Log: 
+          <pre>${INPUT_CHANGE_LOG}
+          </pre>
+          
+          Download: <a href="https://github.com/ReSukiSU-GKI/GKI_KernelSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
+
+          Workflow commit: <code>${{ github.sha }}</code>
+          EOF
+          )
+
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d message_thread_id="${message_thread_id}" \
+            -d parse_mode="HTML" \
+            --data-urlencode text="${TEXT}"

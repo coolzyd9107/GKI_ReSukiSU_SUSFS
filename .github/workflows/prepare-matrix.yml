@@ -1,0 +1,53 @@
+name: 准备 GKI 构建矩阵
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_call:
+    inputs:
+      data_file:
+        description: "GKI 版本数据文件"
+        required: true
+        type: string
+      deduplicate_sublevels:
+        description: "每个内核子版本仅保留首个补丁级别"
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      matrix:
+        description: "GitHub Actions 构建矩阵"
+        value: ${{ jobs.prepare.outputs.matrix }}
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: 生成构建矩阵
+        id: matrix
+        env:
+          DATA_FILE: ${{ inputs.data_file }}
+          DEDUPLICATE_SUBLEVELS: ${{ inputs.deduplicate_sublevels }}
+        run: |
+          args=("$DATA_FILE")
+          if [ "$DEDUPLICATE_SUBLEVELS" = "true" ]; then
+            args+=(--deduplicate-sublevels)
+          fi
+
+          matrix=$(python scripts/prepare_matrix.py "${args[@]}")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix" | python -m json.tool

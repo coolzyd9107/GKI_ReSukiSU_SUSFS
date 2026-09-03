@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "date": "2026-02-21",
+      "content_md": [
+        "## GKI Kernel Version Tracker",
+        "",
+        "Dashboard is now live. You can view all maintained branches in one place.",
+        "",
+        "- Supports Android 12/13/14/15",
+        "- Incremental update every week",
+        "",
+        "Details: [GitHub Repository](https://github.com/zzh20188/GKI_KernelSU_SUSFS)"
+      ],
+      "content_zh_md": [
+        "## GKI 内核版本追踪器",
+        "",
+        "页面已上线，可在同一处查看所有维护分支。",
+        "",
+        "- 支持 Android 12/13/14/15",
+        "- 每周自动增量更新",
+        "",
+        "详情：[GitHub 仓库](https://github.com/zzh20188/GKI_KernelSU_SUSFS)"
+      ]
+    }
+  ]
+}

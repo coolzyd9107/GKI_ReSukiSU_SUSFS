@@ -1,0 +1,48 @@
+name: "Bug Report / 问题反馈"
+description: "Report a bug / 报告问题"
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please fill in the following information / 请填写以下信息**
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug Description / 问题描述"
+      description: "Describe the bug clearly / 清晰描述问题"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: "Steps to Reproduce / 复现步骤"
+      description: "How to reproduce this issue / 如何复现此问题"
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+
+  - type: textarea
+    id: device
+    attributes:
+      label: "Device Info / 设备信息"
+      description: "Your device and kernel info / 设备与内核信息"
+      value: |
+        - Device / 设备:
+        - Android Version / 安卓版本:
+        - Kernel Version / 内核版本:
+        - KernelSU Version / KernelSU版本:
+        - SUSFS Version / SUSFS版本:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs / 日志"
+      description: "Relevant logs or screenshots / 相关日志或截图"
+      render: shell

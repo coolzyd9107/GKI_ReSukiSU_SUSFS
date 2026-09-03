@@ -1,0 +1,81 @@
+diff --git a/anykernel.sh b/anykernel.sh
+index 6a97197..c01bdde 100755
+--- a/anykernel.sh
++++ b/anykernel.sh
+@@ -19,7 +19,7 @@ device.name5=
+ supported.versions=
+ supported.patchlevels=
+ supported.vendorpatchlevels=
+-keycheck.timeout=10
++keycheck.timeout=20
+ '; } # end properties
+ 
+ 
+diff --git a/tools/ak3-core.sh b/tools/ak3-core.sh
+index 9ba26e9..12165c5 100755
+--- a/tools/ak3-core.sh
++++ b/tools/ak3-core.sh
+@@ -1141,3 +1141,63 @@ handle_input() {
+ setup_ak;
+ 
+ do_check_boot_version;
++
++# Kernel image selection prompt
++
++show_kernel_menu() {
++    ui_print " "
++    ui_print "================================"
++    ui_print "       Kernel Image Mode"
++    ui_print "================================"
++    ui_print " "
++    ui_print "Most users should use Normal Mode."
++    ui_print " "
++    ui_print "Bypass Mode is only for devices"
++    ui_print "that fail to boot due to kernel"
++    ui_print "module compatibility issues."
++    ui_print " "
++    ui_print "IMPORTANT:"
++    ui_print "Bypass Mode does NOT hide root."
++    ui_print "It does NOT bypass detection."
++    ui_print " "
++    ui_print "--------------------------------"
++    ui_print "VOL- : Normal Mode (Recommended)"
++    ui_print "VOL+ : Bypass Mode (Advanced)"
++    ui_print "--------------------------------"
++    ui_print " "
++    ui_print "================================"
++
++    handle_input
++
++    KEY_RESULT=$(cat /tmp/ak3_key_result 2>/dev/null)
++
++    case "$KEY_RESULT" in
++        KEY_VOLUMEUP)
++            ui_print " "
++            ui_print "Selected: Bypass Mode"
++            ui_print "Using Bypass-Image"
++            ui_print " "
++            if [ ! -f "$AKHOME/Bypass-Image" ]; then
++                abort "Bypass-Image not found."
++            fi
++            mv "$AKHOME/Bypass-Image" "$AKHOME/Image"
++            ;;
++
++        KEY_VOLUMEDOWN)
++            ui_print " "
++            ui_print "Selected: Normal Mode"
++            ui_print "Using standard Image"
++            ui_print " "
++            ;;
++
++        TIMEOUT)
++            ui_print " "
++            ui_print "Timeout reached."
++            ui_print "Exiting."
++            ui_print " "
++            abort
++            ;;
++    esac
++}
++
++show_kernel_menu

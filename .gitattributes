@@ -1,0 +1,3 @@
+# Unified patch payloads intentionally preserve space-prefixed blank context
+# lines and kernel-style tab indentation.
+security_patch/*.patch -whitespace

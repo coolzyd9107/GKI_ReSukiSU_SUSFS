@@ -1,0 +1,191 @@
+{
+  "android_version": "android12",
+  "kernel_version": "5.10",
+  "entries": [
+    {
+      "date": "2021-08",
+      "kernel": "5.10.43",
+      "revision": "r1"
+    },
+    {
+      "date": "2021-09",
+      "kernel": "5.10.43",
+      "revision": "r1"
+    },
+    {
+      "date": "2021-10",
+      "kernel": "5.10.43",
+      "revision": "r1"
+    },
+    {
+      "date": "2021-11",
+      "kernel": "5.10.66",
+      "revision": "r1"
+    },
+    {
+      "date": "2021-12",
+      "kernel": "5.10.66",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-01",
+      "kernel": "5.10.66",
+      "revision": "r11"
+    },
+    {
+      "date": "2022-02",
+      "kernel": "5.10.81",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-03",
+      "kernel": "5.10.81",
+      "revision": "r11"
+    },
+    {
+      "date": "2022-04",
+      "kernel": "5.10.101",
+      "revision": "r28"
+    },
+    {
+      "date": "2022-05",
+      "kernel": "5.10.101",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-06",
+      "kernel": "5.10.110",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-07",
+      "kernel": "5.10.110",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-08",
+      "kernel": "5.10.117",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-09",
+      "kernel": "5.10.117",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-10",
+      "kernel": "5.10.136",
+      "revision": "r1"
+    },
+    {
+      "date": "2022-11",
+      "kernel": "5.10.136",
+      "revision": "r15"
+    },
+    {
+      "date": "2022-12",
+      "kernel": "5.10.149",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-01",
+      "kernel": "5.10.149",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-02",
+      "kernel": "5.10.160",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-03",
+      "kernel": "5.10.160",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-04",
+      "kernel": "5.10.168",
+      "revision": "r9"
+    },
+    {
+      "date": "2023-05",
+      "kernel": "5.10.168",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-06",
+      "kernel": "5.10.177",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-07",
+      "kernel": "5.10.177",
+      "revision": "r3"
+    },
+    {
+      "date": "2023-09",
+      "kernel": "5.10.185",
+      "revision": "r1"
+    },
+    {
+      "date": "2023-11",
+      "kernel": "5.10.198",
+      "revision": "r1"
+    },
+    {
+      "date": "2024-01",
+      "kernel": "5.10.198",
+      "revision": "r17"
+    },
+    {
+      "date": "2024-03",
+      "kernel": "5.10.205",
+      "revision": "r1"
+    },
+    {
+      "date": "2024-05",
+      "kernel": "5.10.209",
+      "revision": "r13"
+    },
+    {
+      "date": "2024-08",
+      "kernel": "5.10.218",
+      "revision": "r14"
+    },
+    {
+      "date": "2024-11",
+      "kernel": "5.10.226",
+      "revision": "r8"
+    },
+    {
+      "date": "2025-02",
+      "kernel": "5.10.233",
+      "revision": "r1"
+    },
+    {
+      "date": "2025-05",
+      "kernel": "5.10.236",
+      "revision": "r1"
+    },
+    {
+      "date": "2025-06",
+      "kernel": "5.10.237",
+      "revision": "r1"
+    },
+    {
+      "date": "2025-09",
+      "kernel": "5.10.240",
+      "revision": "r1"
+    },
+    {
+      "date": "2025-12",
+      "kernel": "5.10.246",
+      "revision": "r1"
+    },
+    {
+      "date": "lts",
+      "kernel": "5.10.266",
+      "revision": "r1"
+    }
+  ]
+}
