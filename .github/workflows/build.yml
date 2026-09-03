@@ -273,7 +273,7 @@ jobs:
       # AnyKernel3 始终需要；清洁构建不下载不会使用的功能仓库
       - name: 克隆依赖仓库
         run: |
-          ANYKERNEL_REPO="https://github.com/ReSukiSU-GKI/AnyKernel3.git"
+          ANYKERNEL_REPO="https://github.com/coolzyd9107/AnyKernel3.git"
           ANYKERNEL_BRANCH="master"
           if [ "${{ inputs.build_bypass }}" = "true" ]; then
             # The bypass menu is maintained against WildKernels' GKI 2.0 tree.
