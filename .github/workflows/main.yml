@@ -276,7 +276,7 @@ jobs:
   # 当 release_type 不是 Actions 时，创建 GitHub Release
   # 仅限原仓库运行，fork 仓库跳过此步骤
   release:
-    if: ${{ always() && !cancelled() && inputs.release_type != 'Actions' && github.repository == 'ReSukiSU-GKI/GKI_KernelSU_SUSFS' }}
+    if: ${{ always() && !cancelled() && inputs.release_type != 'Actions' && github.repository == 'coolzyd9107/GKI_ReSuiSU_SUSFS' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -643,7 +643,7 @@ jobs:
           <pre>${INPUT_CHANGE_LOG}
           </pre>
           
-          Download: <a href="https://github.com/ReSukiSU-GKI/GKI_KernelSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
+          Download: <a href="https://github.com/coolzyd9107/GKI_ReSukiSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
 
           Workflow commit: <code>${{ github.sha }}</code>
           EOF
@@ -684,7 +684,7 @@ jobs:
           <pre>${INPUT_CHANGE_LOG}
           </pre>
           
-          Download: <a href="https://github.com/ReSukiSU-GKI/GKI_KernelSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
+          Download: <a href="https://github.com/coolzyd9107/GKI_ReSukiSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
 
           Workflow commit: <code>${{ github.sha }}</code>
           EOF
