@@ -369,9 +369,30 @@ jobs:
           if grep -q deprecated <<< $REMOTE_BRANCH; then
             echo "检测到已弃用的分支: $FORMATTED_BRANCH"
             sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
+          elif [ -z "$REMOTE_BRANCH" ]; then
+            # 上游可能删除日期分支，但仍保留该月份的发布 tag。
+            TAG_REFS=$(retry 4 15 git ls-remote --tags --refs https://android.googlesource.com/kernel/common "refs/tags/${FORMATTED_BRANCH}_r*")
+            if [ -z "$TAG_REFS" ]; then
+              echo "::error::未找到 $FORMATTED_BRANCH 分支或对应的发布 tag" >&2
+              exit 1
+            fi
+            RELEASE_TAG=$(printf '%s\n' "$TAG_REFS" | awk '{print $2}' | sed 's|^refs/tags/||' | sort -V | tail -n1)
+            echo "分支已删除，改用发布 tag: $RELEASE_TAG"
+            sed -i "s|revision=\"${FORMATTED_BRANCH}\"|revision=\"refs/tags/${RELEASE_TAG}\"|" "$DEFAULT_MANIFEST_PATH"
+            if ! grep -qF "revision=\"refs/tags/${RELEASE_TAG}\"" "$DEFAULT_MANIFEST_PATH"; then
+              echo "::error::未能在 manifest 中设置 kernel/common 的发布 tag" >&2
+              exit 1
+            fi
           fi
 
           retry 3 30 "$REPO" --trace sync -c "-j$(nproc --all)" --no-tags --fail-fast
+          if [ -n "${RELEASE_TAG:-}" ]; then
+            ACTUAL_SUBLEVEL=$(awk '/^SUBLEVEL = / {print $3; exit}' common/Makefile)
+            if [ "$ACTUAL_SUBLEVEL" != "${{ inputs.sub_level }}" ]; then
+              echo "::error::${RELEASE_TAG} 的子版本号为 $ACTUAL_SUBLEVEL，预期为 ${{ inputs.sub_level }}" >&2
+              exit 1
+            fi
+          fi
           echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> $GITHUB_ENV
 
       # ==================== 伪装 /proc/config.gz（自动检测） ====================
