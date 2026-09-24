@@ -99,7 +99,7 @@ jobs:
     timeout-minutes: ${{ inputs.build_bypass && 180 || 60 }}
 
     # ==================== 环境变量配置 ====================
-    # ccache 配置用于加速重复编译
+    # 5.x 使用 ccache，6.1+ 使用 Bazel 磁盘缓存
     env:
       BUILD_VARIANT: ${{ inputs.clean_build && 'Clean' || inputs.ksu_variant }}
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
@@ -107,6 +107,8 @@ jobs:
       CCACHE_HARDLINK: "true"
       CCACHE_SERIES: ${{ inputs.android_version }}-${{ inputs.kernel_version }}
       CCACHE_SUBLEVEL: ${{ inputs.sub_level }}
+      BUILD_CACHE_KIND: ${{ (inputs.kernel_version == '5.10' || inputs.kernel_version == '5.15') && 'ccache' || 'bazel' }}
+      BUILD_CACHE_SUBDIR: ${{ (inputs.kernel_version == '5.10' || inputs.kernel_version == '5.15') && '.ccache' || '.cache/bazel' }}
       PUBLIC_CCACHE_REPO: coolzyd9107/public_ccache
 
     steps:
@@ -221,35 +223,35 @@ jobs:
           sudo apt-get install -y ccache python3 git curl build-essential libssl-dev bison flex libelf-dev dwarves
 
       # fork 优先使用自己的 Actions 缓存，不占用主仓库的缓存配额
-      - name: 恢复 fork ccache 缓存
+      - name: 恢复 fork 构建缓存
         id: fork-ccache
         if: github.repository != 'coolzyd9107/GKI_ReSukiSU_SUSFS'
         uses: actions/cache/restore@v5
         with:
-          path: ~/.ccache
-          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-${{ github.sha }}
+          path: ~/${{ env.BUILD_CACHE_SUBDIR }}
+          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-${{ env.BUILD_CACHE_KIND }}-${{ github.sha }}
           restore-keys: |
-            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-${{ env.BUILD_CACHE_KIND }}-
 
       # 主仓库及尚无本地缓存的 fork 从公共 Release 附件读取缓存
-      - name: 从公共 Release 恢复 ccache
+      - name: 从公共 Release 恢复构建缓存
         if: steps.fork-ccache.outputs.cache-matched-key == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ ! "$CCACHE_SUBLEVEL" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-            echo "::warning::无效的内核子版本号，跳过公共 ccache"
+            echo "::warning::无效的内核子版本号，跳过公共构建缓存"
             exit 0
           fi
 
-          tag="ccache-v1-${CCACHE_SERIES}"
+          tag="${BUILD_CACHE_KIND}-v1-${CCACHE_SERIES}"
           assets=$(gh api "repos/$PUBLIC_CCACHE_REPO/releases/tags/$tag" \
             --jq '.assets | map(select(.name | endswith(".sha256"))) | sort_by(.created_at) | reverse | .[].name') || {
-            echo "尚无可用的公共 ccache Release: $tag"
+            echo "尚无可用的公共构建缓存 Release: $tag"
             exit 0
           }
           if [ -z "$assets" ]; then
-            echo "公共 ccache Release 中尚无缓存附件: $tag"
+            echo "公共构建缓存 Release 中尚无缓存附件: $tag"
             exit 0
           fi
 
@@ -264,14 +266,14 @@ jobs:
 
           if ! gh release download "$tag" --repo "$PUBLIC_CCACHE_REPO" --pattern "$manifest" --dir "$RUNNER_TEMP" \
             || ! gh release download "$tag" --repo "$PUBLIC_CCACHE_REPO" --pattern "${snapshot}.part-*" --dir "$RUNNER_TEMP"; then
-            echo "::warning::公共 ccache 分块下载失败，继续正常编译"
+            echo "::warning::公共构建缓存分块下载失败，继续正常编译"
             exit 0
           fi
           if (cd "$RUNNER_TEMP" && sha256sum -c "$manifest") \
             && cat "$RUNNER_TEMP/${snapshot}.part-"* | tar -xzf - -C "$HOME"; then
-            echo "已恢复公共 ccache: $snapshot"
+            echo "已恢复公共 $BUILD_CACHE_KIND 缓存: $snapshot"
           else
-            echo "::warning::公共 ccache 校验或解压失败，继续正常编译"
+            echo "::warning::公共构建缓存校验或解压失败，继续正常编译"
           fi
 
       # 在恢复后设置容量，避免旧缓存中的配置覆盖上限
@@ -1508,7 +1510,7 @@ jobs:
               if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
                 LTO_FLAG="--lto=none"
               fi
-              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
+              tools/bazel build --disk_cache="$HOME/.cache/bazel" --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
               strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
             fi
 
@@ -1594,7 +1596,7 @@ jobs:
               if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
                 LTO_FLAG="--lto=none"
               fi
-              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
+              tools/bazel build --disk_cache="$HOME/.cache/bazel" --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
               strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
             fi
 
@@ -1617,36 +1619,37 @@ jobs:
           cp "$SRC_DIR/Image" ./Bypass-Image
 
       # Release 附件不占用本仓库的 Actions 缓存配额；只允许原仓库写入
-      - name: 保存 ccache 到公共 Release
+      - name: 保存构建缓存到公共 Release
         if: github.repository == 'coolzyd9107/GKI_ReSukiSU_SUSFS'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_CCACHE_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "::warning::缺少仓库 Secret PUBLIC_CCACHE_TOKEN，跳过公共 ccache 上传"
+            echo "::warning::缺少仓库 Secret PUBLIC_CCACHE_TOKEN，跳过公共构建缓存上传"
             exit 0
           fi
           if [[ ! "$CCACHE_SUBLEVEL" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-            echo "::warning::无效的内核子版本号，跳过公共 ccache 上传"
+            echo "::warning::无效的内核子版本号，跳过公共构建缓存上传"
             exit 0
           fi
-          if [ ! -d "$HOME/.ccache" ] || [ "$(du -sm "$HOME/.ccache" | cut -f1)" -lt 2 ]; then
-            echo "ccache 中尚无编译结果，跳过上传"
+          cache_dir="$HOME/$BUILD_CACHE_SUBDIR"
+          if [ ! -d "$cache_dir" ] || [ "$(du -sm "$cache_dir" | cut -f1)" -lt 2 ]; then
+            echo "$BUILD_CACHE_KIND 中尚无编译结果，跳过上传"
             exit 0
           fi
 
-          tag="ccache-v1-${CCACHE_SERIES}"
+          tag="${BUILD_CACHE_KIND}-v1-${CCACHE_SERIES}"
           if ! gh release view "$tag" --repo "$PUBLIC_CCACHE_REPO" >/dev/null 2>&1; then
             gh release create "$tag" --repo "$PUBLIC_CCACHE_REPO" \
-              --title "ccache ${CCACHE_SERIES}" --notes "${CCACHE_SERIES} kernel ccache snapshots" --prerelease \
+              --title "$BUILD_CACHE_KIND ${CCACHE_SERIES}" --notes "${CCACHE_SERIES} kernel $BUILD_CACHE_KIND snapshots" --prerelease \
               || gh release view "$tag" --repo "$PUBLIC_CCACHE_REPO" >/dev/null
           fi
 
           snapshot="${CCACHE_SERIES}-${CCACHE_SUBLEVEL}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${RANDOM}-${RANDOM}"
           cd "$RUNNER_TEMP"
           # 每块 1 GiB；只有校验清单上传后，这组分块才可被恢复。
-          tar -czf - -C "$HOME" .ccache | split -b 1G - "${snapshot}.part-"
+          tar -czf - -C "$HOME" "$BUILD_CACHE_SUBDIR" | split -b 1G - "${snapshot}.part-"
           sha256sum "${snapshot}.part-"* > "${snapshot}.sha256"
           for part in "${snapshot}.part-"*; do
             gh release upload "$tag" "$part" --repo "$PUBLIC_CCACHE_REPO"
@@ -1675,11 +1678,11 @@ jobs:
             fi
           done <<< "$assets"
 
-      - name: 保存 fork ccache 到 Actions 缓存
+      - name: 保存 fork 构建缓存到 Actions 缓存
         if: github.repository != 'coolzyd9107/GKI_ReSukiSU_SUSFS' && steps.fork-ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
-          path: ~/.ccache
+          path: ~/${{ env.BUILD_CACHE_SUBDIR }}
           key: ${{ steps.fork-ccache.outputs.cache-primary-key }}
 
       # ==================== 创建 AnyKernel3 压缩包 ====================
